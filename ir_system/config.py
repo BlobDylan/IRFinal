@@ -23,7 +23,7 @@ class RocchioConfig(BM25Config):
     fb_terms: int = 10
     alpha: float = 1.0
     beta: float = 0.75
-    gamma: float = 0.15
+    gamma: int = 0
 
 @dataclass
 class PassageConfig(RM3Config):
