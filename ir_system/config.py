@@ -31,3 +31,8 @@ class PassageConfig(RM3Config):
     window_size: int = 120
     stride: int = 60
     alpha: float = 0.5
+
+@dataclass
+class ProximityConfig(RunConfig):
+    k1: float = 0.9
+    b: float = 0.4
