@@ -1,4 +1,7 @@
 from itertools import product
+import numpy as np
+from pyserini.search import LuceneSearcher
+import re
 from pathlib import Path
 from typing import Dict, Tuple, List
 
@@ -111,3 +114,56 @@ def grid_from_dict(d: Dict[str, List]):
     for vals in product(*[d[k] for k in keys]):
         combos.append({k: v for k, v in zip(keys, vals)})
     return combos
+
+TOKEN_RE = re.compile(r"[A-Za-z0-9]+")
+
+def tokenize(text: str) -> List[str]:
+    return [t.lower() for t in TOKEN_RE.findall(text)]
+
+def safe_raw(searcher: LuceneSearcher, docid: str, cache: Dict[str, str]) -> str:
+    """Retrieves raw document text with caching."""
+    if docid in cache:
+        return cache[docid]
+    d = searcher.doc(docid)
+    raw = d.raw() if d is not None else ""
+    cache[docid] = raw
+    return raw
+
+def normalize_scores(pairs: List[Tuple[str, float]]) -> Dict[str, float]:
+    """Min-max normalize scores into [0,1]."""
+    if not pairs:
+        return {}
+    vals = np.array([s for _, s in pairs], dtype=np.float32)
+    mn, mx = float(vals.min()), float(vals.max())
+    if mx - mn < 1e-9:
+        return {docid: 0.0 for docid, _ in pairs}
+    return {docid: (float(s) - mn) / (mx - mn) for docid, s in pairs}
+
+def merge_rerank(
+    base: List[Tuple[str, float]],
+    reranked_scores: Dict[str, float],
+    topn: int,
+    lam: float = 0.5,
+    keep_rest: bool = True,
+) -> List[Tuple[str, float]]:
+    """
+    Merges normalized base scores with normalized reranker scores.
+    Formula: (1-lam)*base + lam*rerank
+    """
+    head = base[:topn]
+    base_norm = normalize_scores(head)
+    rerank_pairs = [(d, reranked_scores.get(d, 0.0)) for d, _ in head]
+    rerank_norm = normalize_scores(rerank_pairs)
+
+    combined = []
+    for d, _ in head:
+        s = (1 - lam) * base_norm.get(d, 0.0) + lam * rerank_norm.get(d, 0.0)
+        combined.append((d, float(s)))
+
+    combined.sort(key=lambda x: x[1], reverse=True)
+    if not keep_rest:
+        return combined
+
+    seen = set(d for d, _ in combined)
+    tail = [(d, float(s)) for d, s in base if d not in seen]
+    return combined + tail
