@@ -18,7 +18,7 @@ class RM3Config(BM25Config):
     original_query_weight: float = 0.5
 
 @dataclass
-class RocchioConfig(RunConfig):
+class RocchioConfig(BM25Config):
     fb_docs: int = 10
     fb_terms: int = 10
     alpha: float = 1.0
