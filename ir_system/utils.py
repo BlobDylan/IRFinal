@@ -4,6 +4,7 @@ from pyserini.search import LuceneSearcher
 import re
 from pathlib import Path
 from typing import Dict, Tuple, List
+from pyserini.analysis import Analyzer, get_lucene_analyzer
 
 def load_queries_tsv(path: Path) -> Dict[str, str]:
     """Loads queries from a simple TSV: topic_id \t query_text"""
@@ -115,10 +116,12 @@ def grid_from_dict(d: Dict[str, List]):
         combos.append({k: v for k, v in zip(keys, vals)})
     return combos
 
-TOKEN_RE = re.compile(r"[A-Za-z0-9]+")
+_ANALYZER = Analyzer(get_lucene_analyzer(stemmer='porter'))
 
 def tokenize(text: str) -> List[str]:
-    return [t.lower() for t in TOKEN_RE.findall(text)]
+    if not text:
+        return []
+    return _ANALYZER.analyze(text)
 
 def safe_raw(searcher: LuceneSearcher, docid: str, cache: Dict[str, str]) -> str:
     """Retrieves raw document text with caching."""

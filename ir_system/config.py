@@ -1,5 +1,4 @@
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 @dataclass
 class RunConfig:
@@ -31,6 +30,7 @@ class PassageConfig(RM3Config):
     window_size: int = 120
     stride: int = 60
     alpha: float = 0.5
+    strategy: str = 'max'  # New field: 'max' or 'avg'
 
 @dataclass
 class ProximityConfig(RunConfig):
