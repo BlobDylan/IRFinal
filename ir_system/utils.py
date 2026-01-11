@@ -149,9 +149,18 @@ def merge_rerank(
     """
     Merges normalized base scores with normalized reranker scores.
     Formula: (1-lam)*base + lam*rerank
+    Ensures tail scores are shifted to maintain monotonic sorting.
     """
+    def normalize_scores(hits):
+        if not hits: return {}
+        scores = [s for _, s in hits]
+        min_s, max_s = min(scores), max(scores)
+        if max_s == min_s: return {d: 1.0 for d, _ in hits}
+        return {d: (s - min_s) / (max_s - min_s) for d, s in hits}
+
     head = base[:topn]
     base_norm = normalize_scores(head)
+    
     rerank_pairs = [(d, reranked_scores.get(d, 0.0)) for d, _ in head]
     rerank_norm = normalize_scores(rerank_pairs)
 
@@ -161,9 +170,19 @@ def merge_rerank(
         combined.append((d, float(s)))
 
     combined.sort(key=lambda x: x[1], reverse=True)
+    
     if not keep_rest:
         return combined
 
     seen = set(d for d, _ in combined)
     tail = [(d, float(s)) for d, s in base if d not in seen]
+    
+    if combined and tail:
+        min_head_score = combined[-1][1]
+        max_tail_score = tail[0][1]
+        
+        if max_tail_score >= min_head_score:
+            offset = max_tail_score - min_head_score + 1e-4
+            tail = [(d, s - offset) for d, s in tail]
+
     return combined + tail
