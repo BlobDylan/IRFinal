@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum
 
 @dataclass
 class RunConfig:
@@ -24,15 +25,24 @@ class RocchioConfig(BM25Config):
     beta: float = 0.75
     gamma: int = 0
 
+class PassageStrategy(str, Enum):
+    MAX = 'max'
+    AVG = 'avg'
+
 @dataclass
 class PassageConfig(RM3Config):
     candidate_k: int = 200
     window_size: int = 120
     stride: int = 60
     alpha: float = 0.5
-    strategy: str = 'max'  # New field: 'max' or 'avg'
+    strategy: PassageStrategy = PassageStrategy.MAX
+
+class ProximityMode(str, Enum):
+    PAIR = 'pair'
+    SPAN = 'span'
 
 @dataclass
 class ProximityConfig(RunConfig):
     k1: float = 0.9
     b: float = 0.4
+    mode: ProximityMode = ProximityMode.PAIR
